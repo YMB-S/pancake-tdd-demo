@@ -1,0 +1,13 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: pancake-app
+spec:
+  template:
+    metadata:
+      name: pancake-app-pod
+    spec:
+      containers:
+      - name: pancake-app
+        image: ymbs/registry
+      restartPolicy: Never

@@ -1,0 +1,139 @@
+# This file is a template, and might need editing before it works on your project.
+# This is a sample GitLab CI/CD configuration file that should run without any modifications.
+# It demonstrates a basic 3 stage CI/CD pipeline. Instead of real tests or scripts,
+# it uses echo commands to simulate the pipeline execution.
+#
+# A pipeline is composed of independent jobs that run scripts, grouped into stages.
+# Stages run in sequential order, but jobs within stages run in parallel.
+#
+# For more information, see: https://docs.gitlab.com/ee/ci/yaml/index.html#stages
+#
+# You can copy and paste this template into a new `.gitlab-ci.yml` file.
+# You should not add this template to an existing `.gitlab-ci.yml` file by using the `include:` keyword.
+#
+# To contribute improvements to CI/CD templates, please follow the Development guide at:
+# https://docs.gitlab.com/ee/development/cicd/templates.html
+# This specific template is located at:
+# https://gitlab.com/gitlab-org/gitlab/-/blob/master/lib/gitlab/ci/templates/Getting-Started.gitlab-ci.yml
+
+
+
+stages:          # List of stages for jobs, and their order of execution
+  #- update_code
+  - build
+  - test
+  - deploy_testing
+  - deploy_staging
+  - deploy_production
+
+#update_code:
+#  stage: update_code
+#  script:
+#    - git checkout main
+#    - git pull
+
+build-job:       # This job runs in the build stage, which runs first.
+  #tags:
+  #  - hva
+  stage: build
+  script:
+    - echo "Compiling the code..."
+    - './gradlew build'
+    - echo "Compile complete."
+    - echo "Compiling jar"
+    - './gradlew jar'
+    - echo "Compiling Docker image..."
+    #- 'kubectl config use-context se-specialization-2023-1/tse2/yorick-bijlsma/pancake-ci-cd-week-3:deployment-agent'
+    - ls
+    - 'docker build -t ymbs/registry .'
+    - 'docker push ymbs/registry'
+
+unit-test-job:   # This job runs in the test stage.
+  #tags:
+  #    - hva
+  stage: test    # It only starts when the job in the build stage completes successfully.
+  script:
+    - echo "Running unit tests..."
+    #- './gradlew test'
+    - echo "Running Jacoco to generate code coverage report"
+    #- './gradlew jacocoTestReport'
+    - echo "See Jacoco-generated report for coverage details"
+    - echo "Running Sonarqube analysis"
+    #- './gradlew sonar -i'
+
+#lint-test-job:   # This job also runs in the test stage.
+#  #tags:
+#  #  - hva
+#  stage: test    # It can run at the same time as unit-test-job (in parallel).
+#  script:
+#    - echo "something to do with linting"
+
+
+
+
+deploy_testing:
+  stage: deploy_testing
+  environment: testing
+  script:
+    - echo "Using context Testing"
+    - 'kubectl config use-context se-specialization-2023-1/tse2/yorick-bijlsma/pancake-ci-cd-week-3:testing'
+    - 'kubectl get pods'
+    - echo 'Deploying to Testing...'
+    - 'kubectl replace --force -f docker-kubernetes-deploy.yml'
+    - 'kubectl get pods'
+    - echo 'Successfully deployed to Testing'
+  only:
+    - branches
+  except:
+    - staging
+    - production
+
+deploy_staging:
+  stage: deploy_staging
+  environment: staging
+  script:
+    - echo "Using context Staging"  
+    - 'kubectl config get-contexts'
+    - 'kubectl config use-context se-specialization-2023-1/tse2/yorick-bijlsma/pancake-ci-cd-week-3:staging'
+    - 'kubectl get pods'
+    - echo 'Deploying to Staging...'
+    - 'kubectl replace --force -f docker-kubernetes-deploy.yml'
+    - 'kubectl get pods'
+    - echo 'Successfully deployed to Staging'
+  only:
+    - staging
+  when: manual
+
+deploy_production:
+  stage: deploy_production
+  environment: production
+  script:
+    - echo "Using context Production"  
+    - 'kubectl config get-contexts'
+    - 'kubectl config use-context se-specialization-2023-1/tse2/yorick-bijlsma/pancake-ci-cd-week-3:deployment-agent'
+    - 'kubectl get pods'
+    - echo 'Deploying to Production...'
+    - 'kubectl replace --force -f docker-kubernetes-deploy.yml'
+    - 'kubectl get pods'
+    - echo 'Successfully deployed to Production'
+  only:
+    - production
+  when: manual
+
+
+
+#deploy:      # This job runs in the deploy stage. (DEPRECATED)
+#  stage: deploy_testing  # It only runs when *both* jobs in the test stage complete successfully.
+#  environment: production
+#  script:
+#    - echo "Using context:"
+#    - echo "se-specialization-2023-1/tse2/yorick-bijlsma/pancake-ci-cd-week-3:deployment-agent"
+#    - 'kubectl config use-context se-specialization-2023-1/tse2/yorick-bijlsma/pancake-ci-cd-week-3:deployment-agent'
+#    - 'kubectl get pods'
+#    - ls
+#    - echo "Deploying..."
+#    #- 'kubectl set image pancake-app=docker.io/registry/pancake-app'
+#    #- 'kubectl run --rm pancake-app --image=registry/pancake-app'# -f docker-kubernetes-deploy.yml'
+#    - 'kubectl replace --force -f docker-kubernetes-deploy.yml'
+#    - 'kubectl get pods'
+#    - echo "Application successfully deployed."
